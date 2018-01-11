@@ -18,23 +18,23 @@ FROM Ships;
 /*2.4*/
 SELECT COUNTRY
 FROM CLASSES C1
-WHERE "type" = 'bb'
+WHERE type = 'bb'
 INTERSECT
 SELECT COUNTRY
 FROM CLASSES C2
-WHERE "type" = 'bc';
+WHERE type = 'bc';
 
 
 
 /*2.5*/
 CREATE VIEW OutcomesWithDate AS
-SELECT Outcomes.ship, Outcomes.battle, Outcomes."result", Battles.date_fought
+SELECT Outcomes.ship, Outcomes.battle, Outcomes.result, Battles.date_fought
 FROM Outcomes JOIN Battles ON Outcomes.battle=Battles.name;
 
 SELECT D1.ship
 FROM OutcomesWithDate D1 JOIN OutcomesWithDate D2
 ON d1.ship = d2.ship
-WHERE D1."result" = 'damaged' AND D1.date_fought < D2.date_fought;
+WHERE D1.result = 'damaged' AND D1.date_fought < D2.date_fought;
 
 /*2.6*/
 SELECT country
@@ -66,7 +66,7 @@ HAVING count(name) >= 3;
 CREATE VIEW sunkView4 AS
 SELECT class, ship
 FROM SHIPS, OUTCOMES
-WHERE Ships.name = OUTCOMES.ship AND outcomes."result" = 'sunk';
+WHERE Ships.name = OUTCOMES.ship AND outcomes.result = 'sunk';
 
 SELECT class, COUNT(ship) AS sunk_ships
 FROM sunkView3 NATURAL LEFT OUTER JOIN sunkView4
@@ -74,7 +74,7 @@ GROUP BY class;
 
 /*3.1*/
 
-INSERT INTO  Classes (class, "type", country,  bore, displacement)
+INSERT INTO  Classes (class, type, country,  bore, displacement)
 VALUES ('Vittorio Veneto', 'bb', 'Italy', 15, 41000);
 
 INSERT INTO Ships (name, class, launched)
@@ -173,14 +173,14 @@ ALTER TABLE Ships ADD CHECK (name <> class);
 /*4.8*/
 
 CREATE OR REPLACE VIEW OutcomesV AS
-SELECT ship, battle, "result"
+SELECT ship, battle, result
 FROM Outcomes O1
 WHERE EXISTS (
 SELECT *
 FROM Outcomes O2, Battles B1, Battles B2
 WHERE B1.name=O1.battle /* get a battle date*/
 AND O1.ship=O2.ship /*have the same ship*/
-AND O2."result" = 'sunk' /*has this ship been sunk*/
+AND O2.result = 'sunk' /*has this ship been sunk*/
 AND B2.name = O2.BATTLE
 AND B1.DATE_FOUGHT > B2.DATE_FOUGHT)
 WITH CHECK OPTION;
