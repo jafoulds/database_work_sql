@@ -1,0 +1,186 @@
+/*2.1*/
+SELECT Ships.name
+FROM Ships NATURAL JOIN Classes
+WHERE displacement > 35000;
+
+/*2.2*/
+SELECT name, displacement, numguns
+FROM Classes, Ships, Outcomes
+WHERE Classes.class = Ships.class AND Ships.name = Outcomes.ship AND battle='Guadalcanal';
+
+/*2.3*/
+SELECT ship AS ship_name
+FROM Outcomes
+UNION
+SELECT name AS ship_name
+FROM Ships;
+
+/*2.4*/
+SELECT COUNTRY
+FROM CLASSES C1
+WHERE "type" = 'bb'
+INTERSECT
+SELECT COUNTRY
+FROM CLASSES C2
+WHERE "type" = 'bc';
+
+
+
+/*2.5*/
+CREATE VIEW OutcomesWithDate AS
+SELECT Outcomes.ship, Outcomes.battle, Outcomes."result", Battles.date_fought
+FROM Outcomes JOIN Battles ON Outcomes.battle=Battles.name;
+
+SELECT D1.ship
+FROM OutcomesWithDate D1 JOIN OutcomesWithDate D2
+ON d1.ship = d2.ship
+WHERE D1."result" = 'damaged' AND D1.date_fought < D2.date_fought;
+
+/*2.6*/
+SELECT country
+FROM Classes
+WHERE numGuns =
+	(SELECT MAX(numGuns)
+	 FROM classes)
+;
+
+/*2.7*/
+SELECT S1.NAME
+FROM Classes C1 JOIN Ships S1
+ON C1.CLASS = S1.CLASS
+WHERE numGuns =
+(SELECT MAX(numGuns)
+FROM Classes C2
+WHERE C1.bore = C2.bore)
+;
+
+/*2.8*/
+/*Find what classes have more than 3 ships*/
+CREATE VIEW sunkView3 AS
+SELECT CLASS
+FROM Ships
+GROUP BY CLASS
+HAVING count(name) >= 3;
+
+/*Find what ships sunk */
+CREATE VIEW sunkView4 AS
+SELECT class, ship
+FROM SHIPS, OUTCOMES
+WHERE Ships.name = OUTCOMES.ship AND outcomes."result" = 'sunk';
+
+SELECT class, COUNT(ship) AS sunk_ships
+FROM sunkView3 NATURAL LEFT OUTER JOIN sunkView4
+GROUP BY class;
+
+/*3.1*/
+
+INSERT INTO  Classes (class, "type", country,  bore, displacement)
+VALUES ('Vittorio Veneto', 'bb', 'Italy', 15, 41000);
+
+INSERT INTO Ships (name, class, launched)
+VALUES('Vittorio Veneto', 'Vittorio Veneto', 1940);
+
+INSERT INTO Ships (name, class, launched)
+VALUES('Italia', 'Vittorio Veneto', 1940);
+
+INSERT INTO Ships (name, class, launched)
+VALUES('Roma', 'Vittorio Veneto', 1942);
+
+/*3.2*/
+DELETE FROM Classes
+WHERE class IN
+	(SELECT class
+	FROM Classes NATURAL LEFT OUTER JOIN Ships
+	GROUP BY class
+	HAVING COUNT(name) < 3)
+;
+
+/*3.3*/
+UPDATE Classes
+SET bore = bore*2.5,
+       displacement = displacement/1.1;
+
+/*4.1*/
+ALTER TABLE Classes ADD CONSTRAINT classes_pk PRIMARY KEY(class);
+
+CREATE TABLE Exceptions(
+row_id ROWID,
+owner VARCHAR2(30),
+table_name VARCHAR2(30),
+constraint VARCHAR2(30)
+);
+
+SELECT Ships.*, constraint
+FROM Ships, Exceptions
+WHERE Ships.rowid = Exceptions.row_id;
+
+DELETE FROM Ships
+WHERE class IN (
+SELECT class
+FROM Ships, Exceptions
+WHERE Ships.rowid = Exceptions.row_id
+);
+
+ALTER TABLE Ships ADD CONSTRAINT ship_to_classes_fk
+FOREIGN KEY(class) REFERENCES Classes(class) ON DELETE CASCADE;
+
+/*Now class in the table Classes is a primary key that is referenced by ships so now there no classes in Ships that do not exist in Classes */
+
+/*4.2*/
+
+ALTER TABLE Battles ADD CONSTRAINT battles_pk PRIMARY KEY(name);
+ALTER TABLE Outcomes ADD CONSTRAINT outcomes_to_battle_fk
+FOREIGN KEY(battle) REFERENCES Battles(name) ON DELETE CASCADE;
+
+/*4.3*/
+
+ALTER TABLE Ships ADD CONSTRAINT ships_pk PRIMARY KEY(name);
+DELETE FROM Outcomes WHERE Outcomes.ship NOT IN (SELECT name FROM Ships);
+ALTER TABLE Outcomes ADD CONSTRAINT outcomes_to_ships_fk
+FOREIGN KEY(ship) REFERENCES Ships(name) ON DELETE CASCADE;
+
+/*4.4*/
+
+DELETE FROM Classes WHERE bore > 16;
+ALTER TABLE Classes ADD CHECK (bore <= 16);
+
+/*4.5*/
+
+DELETE FROM Classes WHERE numGuns > 9 AND bore > 14;
+ALTER TABLE Classes ADD CHECK (numGuns <= 9 OR bore <= 14);
+/* p = if class of ships has more than 9 guns
+     q = then bore cannot be larger than 14 inches
+     CHECK has to be NOT p or q form*/
+
+/*4.6*/
+
+CREATE OR REPLACE VIEW OutcomesView AS
+SELECT ship, battle, result
+FROM Outcomes O
+WHERE NOT EXISTS (
+SELECT *
+FROM Ships S, Battles B
+WHERE S.name=O.ship AND O.battle=B.name AND
+S.launched > TO_NUMBER(TO_CHAR(B.date_fought, 'yyyy'))
+)
+WITH CHECK OPTION;
+
+/*4.7*/
+
+DELETE FROM Ships WHERE name = class;
+ALTER TABLE Ships ADD CHECK (name <> class);
+
+/*4.8*/
+
+CREATE OR REPLACE VIEW OutcomesV AS
+SELECT ship, battle, "result"
+FROM Outcomes O1
+WHERE EXISTS (
+SELECT *
+FROM Outcomes O2, Battles B1, Battles B2
+WHERE B1.name=O1.battle /* get a battle date*/
+AND O1.ship=O2.ship /*have the same ship*/
+AND O2."result" = 'sunk' /*has this ship been sunk*/
+AND B2.name = O2.BATTLE
+AND B1.DATE_FOUGHT > B2.DATE_FOUGHT)
+WITH CHECK OPTION;
